@@ -12,7 +12,7 @@ class PocketBaseService {
     // For local development on Windows
     pb = PocketBase('http://127.0.0.1:8090');
 
-    // TODO: For mobile (Phase 6), use Tailscale IP:
+    // For mobile (Phase 6), use Tailscale IP:
     // pb = PocketBase('http://100.94.48.126:8090');
   }
 
