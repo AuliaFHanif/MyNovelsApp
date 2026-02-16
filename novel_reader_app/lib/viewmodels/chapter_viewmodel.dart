@@ -66,4 +66,20 @@ class ChapterViewModel extends ChangeNotifier {
       return false;
     }
   }
+
+  // Update existing chapter
+  Future<bool> updateChapter(Chapter chapter) async {
+    try {
+      await _pb.pb
+          .collection('chapters')
+          .update(chapter.id, body: chapter.toJson());
+      await fetchChapters(chapter.seriesId); // Refresh the list
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to update chapter: $e';
+      print(_errorMessage);
+      notifyListeners();
+      return false;
+    }
+  }
 }

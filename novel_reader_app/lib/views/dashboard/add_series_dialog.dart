@@ -66,7 +66,7 @@ class _AddSeriesDialogState extends State<AddSeriesDialog> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedLanguage,
+                initialValue: _selectedLanguage,
                 decoration: const InputDecoration(
                   labelText: 'Source Language *',
                   border: OutlineInputBorder(),

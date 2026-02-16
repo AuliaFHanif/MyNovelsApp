@@ -5,6 +5,7 @@ import '../../models/chapter.dart';
 import '../../viewmodels/chapter_viewmodel.dart';
 import 'add_chapter_dialog.dart';
 import 'view_chapter_dialog.dart';
+import 'edit_chapter_dialog.dart';
 
 class SeriesDetailScreen extends StatefulWidget {
   final Series series;
@@ -219,6 +220,17 @@ class _ChapterListItem extends StatelessWidget {
                   ),
                 ),
                 const PopupMenuItem(
+                  // <-- ADD THIS
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('Edit', style: TextStyle(color: Colors.blue)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
                   value: 'translate',
                   child: Row(
                     children: [
@@ -242,6 +254,9 @@ class _ChapterListItem extends StatelessWidget {
               onSelected: (value) {
                 if (value == 'view') {
                   _viewChapter(context);
+                } else if (value == 'edit') {
+                  // <-- ADD THIS CASE
+                  _editChapter(context);
                 } else if (value == 'delete') {
                   _deleteChapter(context);
                 } else if (value == 'translate') {
@@ -279,6 +294,13 @@ class _ChapterListItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _editChapter(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => EditChapterDialog(chapter: chapter),
     );
   }
 
