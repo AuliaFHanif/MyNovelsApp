@@ -83,10 +83,19 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
-                            _currentSeries.coverImage!,
+                            'http://127.0.0.1:8090/api/files/series/${_currentSeries.id}/${_currentSeries.coverImage!}',
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(
+                                  Icons.menu_book,
+                                  size: 80,
+                                  color: Colors.white70,
+                                ),
+                              );
+                            },
                           ),
                         )
                       : const Icon(
@@ -95,101 +104,48 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
                           color: Colors.white70,
                         ),
                 ),
-                // Series Info
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _currentSeries.title,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'by ${_currentSeries.author}',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 16),
-                      // Status Badge
-                      Row(
+                // Series Info (Scrollable)
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'STATUS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(height: 16),
+                          Text(
+                            _currentSeries.title,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(
-                                _currentSeries.status,
-                              ).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _currentSeries.status == 'ongoing'
-                                  ? 'Ongoing'
-                                  : 'Finished',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: _getStatusColor(_currentSeries.status),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Source Badge
-                      Row(
-                        children: [
-                          const Text(
-                            'SOURCE LANGUAGE',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Spacer(),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.language,
-                                size: 14,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _currentSeries.sourceLanguage,
+                          if (_currentSeries.translatedTitle != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                _currentSeries.translatedTitle!,
                                 style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[700],
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
-                            ],
+                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'by ${_currentSeries.author}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Total Chapters
-                      Consumer<ChapterViewModel>(
-                        builder: (context, viewModel, child) {
-                          return Row(
+                          const SizedBox(height: 16),
+                          // Status Badge
+                          Row(
                             children: [
                               const Text(
-                                'TOTAL CHAPTERS',
+                                'STATUS',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey,
@@ -197,40 +153,114 @@ class _SeriesDetailScreenState extends State<SeriesDetailScreen> {
                                 ),
                               ),
                               const Spacer(),
-                              Text(
-                                '${viewModel.chaptersList.length}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(
+                                    _currentSeries.status,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _currentSeries.status == 'ongoing'
+                                      ? 'Ongoing'
+                                      : 'Finished',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _getStatusColor(
+                                      _currentSeries.status,
+                                    ),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
-                          );
-                        },
+                          ),
+                          const SizedBox(height: 16),
+                          // Source Badge
+                          Row(
+                            children: [
+                              const Text(
+                                'SOURCE LANGUAGE',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.language,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _currentSeries.sourceLanguage,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Total Chapters
+                          Consumer<ChapterViewModel>(
+                            builder: (context, viewModel, child) {
+                              return Row(
+                                children: [
+                                  const Text(
+                                    'TOTAL CHAPTERS',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${viewModel.chaptersList.length}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          // Description
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _currentSeries.description ??
+                                'No description available.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      // Description
-                      const Text(
-                        'Description',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _currentSeries.description ??
-                            'No description available.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                const Spacer(),
                 // Edit Buttons
                 Padding(
                   padding: const EdgeInsets.all(24),

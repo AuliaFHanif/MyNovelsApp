@@ -1,6 +1,7 @@
 class Series {
   final String id;
   final String title;
+  final String? translatedTitle;
   final String author;
   final String sourceLanguage;
   final String? coverImage;
@@ -14,6 +15,7 @@ class Series {
   Series({
     required this.id,
     required this.title,
+    this.translatedTitle,
     required this.author,
     required this.sourceLanguage,
     this.coverImage,
@@ -40,6 +42,7 @@ class Series {
     return Series(
       id: json['id'],
       title: json['title'],
+      translatedTitle: json['translated_title'],
       author: json['author'],
       sourceLanguage: json['source_language'],
       coverImage: json['cover_image'],
@@ -55,6 +58,7 @@ class Series {
   Map<String, dynamic> toJson() {
     return {
       'title': title,
+      'translated_title': translatedTitle,
       'author': author,
       'source_language': sourceLanguage,
       'description': description,

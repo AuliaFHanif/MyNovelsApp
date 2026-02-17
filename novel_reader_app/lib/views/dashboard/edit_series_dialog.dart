@@ -14,6 +14,7 @@ class EditSeriesDialog extends StatefulWidget {
 
 class _EditSeriesDialogState extends State<EditSeriesDialog> {
   late final TextEditingController _titleController;
+  late final TextEditingController _translatedTitleController;
   late final TextEditingController _authorController;
   late final TextEditingController _descriptionController;
   late String _selectedLanguage;
@@ -37,6 +38,9 @@ class _EditSeriesDialogState extends State<EditSeriesDialog> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.series.title);
+    _translatedTitleController = TextEditingController(
+      text: widget.series.translatedTitle ?? '',
+    );
     _authorController = TextEditingController(text: widget.series.author);
     _descriptionController = TextEditingController(
       text: widget.series.description ?? '',
@@ -48,6 +52,7 @@ class _EditSeriesDialogState extends State<EditSeriesDialog> {
   @override
   void dispose() {
     _titleController.dispose();
+    _translatedTitleController.dispose();
     _authorController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -101,6 +106,26 @@ class _EditSeriesDialogState extends State<EditSeriesDialog> {
                       controller: _titleController,
                       decoration: const InputDecoration(
                         hintText: 'Enter series title',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Translated Title
+                    const Text(
+                      'Translated Title',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _translatedTitleController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter translated title (optional)',
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -283,6 +308,9 @@ class _EditSeriesDialogState extends State<EditSeriesDialog> {
     final updatedSeries = Series(
       id: widget.series.id,
       title: _titleController.text.trim(),
+      translatedTitle: _translatedTitleController.text.trim().isEmpty
+          ? null
+          : _translatedTitleController.text.trim(),
       author: _authorController.text.trim(),
       sourceLanguage: _selectedLanguage,
       coverImage: widget.series.coverImage,

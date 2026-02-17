@@ -89,7 +89,7 @@ class _DashboardHomeState extends State<DashboardHome> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
+                        vertical: 18,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -514,9 +514,18 @@ class _NovelCard extends StatelessWidget {
                               topRight: Radius.circular(12),
                             ),
                             child: Image.network(
-                              series.coverImage!,
+                              'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
                               fit: BoxFit.cover,
                               width: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Icon(
+                                    Icons.menu_book,
+                                    size: 60,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
+                                );
+                              },
                             ),
                           )
                         : Center(
@@ -569,30 +578,6 @@ class _NovelCard extends StatelessWidget {
                       ),
                       itemBuilder: (context) => [
                         const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, size: 18, color: Colors.blue),
-                              SizedBox(width: 8),
-                              Text('Edit Series'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'settings',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.settings,
-                                size: 18,
-                                color: Colors.orange,
-                              ),
-                              SizedBox(width: 8),
-                              Text('Translation Settings'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
                           value: 'delete',
                           child: Row(
                             children: [
@@ -607,11 +592,7 @@ class _NovelCard extends StatelessWidget {
                         ),
                       ],
                       onSelected: (value) {
-                        if (value == 'edit') {
-                          _editSeries(context);
-                        } else if (value == 'settings') {
-                          _editContext(context);
-                        } else if (value == 'delete') {
+                        if (value == 'delete') {
                           _deleteSeries(context);
                         }
                       },
@@ -634,6 +615,20 @@ class _NovelCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (series.translatedTitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          series.translatedTitle!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     const SizedBox(height: 4),
                     Text(
                       series.author,
@@ -641,20 +636,25 @@ class _NovelCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (series.description != null &&
-                        series.description!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        series.description!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                          height: 1.4,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    const SizedBox(height: 8),
+                    // Description Area (Fixed Height)
+                    SizedBox(
+                      height: 40,
+                      child:
+                          series.description != null &&
+                              series.description!.isNotEmpty
+                          ? Text(
+                              series.description!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                                height: 1.4,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : SizedBox.expand(),
+                    ),
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -662,21 +662,6 @@ class _NovelCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _editSeries(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit series feature coming soon!')),
-    );
-  }
-
-  void _editContext(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SeriesDetailScreen(series: series),
       ),
     );
   }
