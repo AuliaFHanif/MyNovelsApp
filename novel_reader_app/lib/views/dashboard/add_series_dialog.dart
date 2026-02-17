@@ -16,6 +16,7 @@ class _AddSeriesDialogState extends State<AddSeriesDialog> {
   final _authorController = TextEditingController();
   final _descriptionController = TextEditingController();
   String _selectedLanguage = 'Chinese';
+  String _selectedStatus = 'ongoing';
 
   final List<String> _languages = ['Chinese', 'Japanese', 'Korean', 'English'];
 
@@ -81,6 +82,23 @@ class _AddSeriesDialogState extends State<AddSeriesDialog> {
                 },
               ),
               const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Status',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'ongoing', child: Text('Ongoing')),
+                  DropdownMenuItem(value: 'finished', child: Text('Finished')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedStatus = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
@@ -119,6 +137,7 @@ class _AddSeriesDialogState extends State<AddSeriesDialog> {
       description: _descriptionController.text.isEmpty
           ? null
           : _descriptionController.text,
+      status: _selectedStatus,
       created: DateTime.now(),
       updated: DateTime.now(),
     );

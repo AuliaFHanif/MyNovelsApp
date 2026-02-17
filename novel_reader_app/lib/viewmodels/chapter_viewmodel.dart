@@ -12,6 +12,7 @@ class ChapterViewModel extends ChangeNotifier {
   List<Chapter> get chaptersList => _chaptersList;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  PocketBaseService get pb => _pb;
 
   // Fetch chapters for a specific series
   Future<void> fetchChapters(String seriesId) async {
