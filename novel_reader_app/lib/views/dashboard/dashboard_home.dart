@@ -14,6 +14,7 @@ class DashboardHome extends StatefulWidget {
 
 class _DashboardHomeState extends State<DashboardHome> {
   String _searchQuery = '';
+  bool _isGridView = true; // true = grid, false = list
 
   @override
   void initState() {
@@ -230,13 +231,19 @@ class _DashboardHomeState extends State<DashboardHome> {
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.grid_view),
-                                  onPressed: () {},
-                                  color: const Color(0xFF5B7FEC),
+                                  onPressed: () =>
+                                      setState(() => _isGridView = true),
+                                  color: _isGridView
+                                      ? const Color(0xFF5B7FEC)
+                                      : Colors.grey[400],
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.view_list),
-                                  onPressed: () {},
-                                  color: Colors.grey[400],
+                                  onPressed: () =>
+                                      setState(() => _isGridView = false),
+                                  color: !_isGridView
+                                      ? const Color(0xFF5B7FEC)
+                                      : Colors.grey[400],
                                 ),
                               ],
                             ),
@@ -438,11 +445,22 @@ class _DashboardHomeState extends State<DashboardHome> {
       );
     }
 
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: [...filteredSeries.map((series) => _NovelCard(series: series))],
-    );
+    if (_isGridView) {
+      return Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: [
+          ...filteredSeries.map((series) => _NovelCard(series: series)),
+        ],
+      );
+    } else {
+      // List View
+      return Column(
+        children: filteredSeries
+            .map((series) => _NovelListItem(series: series))
+            .toList(),
+      );
+    }
   }
 
   void _showAddSeriesDialog(BuildContext context) {
@@ -662,6 +680,346 @@ class _NovelCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _deleteSeries(BuildContext context) async {
+    final viewModel = context.read<SeriesViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red),
+            SizedBox(width: 12),
+            Text('Delete Series?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "${series.title}"?',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            const Text('This will permanently delete:'),
+            const SizedBox(height: 8),
+            const Text('• The series'),
+            const Text('• All chapters'),
+            const Text('• All translations'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final navigator = Navigator.of(context);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Deleting series...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final success = await viewModel.deleteSeries(series.id);
+      navigator.pop();
+
+      if (success) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Series deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(viewModel.errorMessage ?? 'Failed to delete series'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Error deleting series: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+class _NovelListItem extends StatelessWidget {
+  final Series series;
+
+  const _NovelListItem({required this.series});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SeriesDetailScreen(series: series),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Cover Image (Small)
+              Container(
+                width: 80,
+                height: 110,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: _getGradientColors(series.title),
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: series.coverImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.network(
+                          'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(
+                                Icons.menu_book,
+                                size: 40,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : Center(
+                        child: Icon(
+                          Icons.menu_book,
+                          size: 40,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 16),
+              // Series Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      series.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (series.translatedTitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          series.translatedTitle!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'by ${series.author}',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (series.description != null &&
+                        series.description!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          series.description!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            series.sourceLanguage,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: series.status == 'ongoing'
+                                ? Colors.green[100]
+                                : Colors.blue[100],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            series.status == 'ongoing' ? 'Ongoing' : 'Finished',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: series.status == 'ongoing'
+                                  ? Colors.green[700]
+                                  : Colors.blue[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Menu
+              PopupMenuButton(
+                icon: const Icon(Icons.more_vert, size: 20),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 18, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Edit Series'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'settings',
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings, size: 18, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text('Translation Settings'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editSeries(context);
+                  } else if (value == 'settings') {
+                    _editContext(context);
+                  } else if (value == 'delete') {
+                    _deleteSeries(context);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Color> _getGradientColors(String title) {
+    const gradients = [
+      [Color(0xFF667EEA), Color(0xFF764BA2)],
+      [Color(0xFFEF5753), Color(0xFFFF9A56)],
+      [Color(0xFF42E695), Color(0xFF3BB2B8)],
+      [Color(0xFFF093FB), Color(0xFFF5576C)],
+      [Color(0xFF4FACFE), Color(0xFF00F2FE)],
+    ];
+    final index = title.hashCode.abs() % gradients.length;
+    return gradients[index];
+  }
+
+  void _editSeries(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Edit series feature coming soon!')),
+    );
+  }
+
+  void _editContext(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SeriesDetailScreen(series: series),
       ),
     );
   }

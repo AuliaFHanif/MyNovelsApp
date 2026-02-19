@@ -163,7 +163,7 @@ class _EditSeriesDialogState extends State<EditSeriesDialog> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _selectedLanguage,
+                      initialValue: _selectedLanguage,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -193,7 +193,7 @@ class _EditSeriesDialogState extends State<EditSeriesDialog> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,

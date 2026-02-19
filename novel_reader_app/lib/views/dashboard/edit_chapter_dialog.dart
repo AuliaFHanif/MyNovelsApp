@@ -154,7 +154,7 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
 
               // Chapter Status
               DropdownButtonFormField<String>(
-                value: _selectedStatus,
+                initialValue: _selectedStatus,
                 decoration: const InputDecoration(
                   labelText: 'Chapter Status',
                   border: OutlineInputBorder(),
