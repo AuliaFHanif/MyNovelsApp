@@ -68,6 +68,19 @@ class ChapterViewModel extends ChangeNotifier {
     }
   }
 
+  // Get a single chapter by ID
+  Future<Chapter?> getChapter(String chapterId) async {
+    try {
+      final record = await _pb.pb.collection('chapters').getOne(chapterId);
+      return Chapter.fromJson(record.toJson());
+    } catch (e) {
+      _errorMessage = 'Failed to get chapter: $e';
+      print(_errorMessage);
+      notifyListeners();
+      return null;
+    }
+  }
+
   // Update existing chapter
   Future<bool> updateChapter(Chapter chapter) async {
     try {

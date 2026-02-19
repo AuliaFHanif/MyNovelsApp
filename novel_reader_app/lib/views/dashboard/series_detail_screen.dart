@@ -944,11 +944,6 @@ class _ChapterTableRow extends StatelessWidget {
       return;
     }
 
-    // Get series to determine source language
-    // For now, we'll ask the user or use a default
-    // In a real app, you'd get this from the series
-    final sourceLanguage = 'Chinese'; // TODO: Get from series
-
     if (context.mounted) {
       final success = await showDialog<bool>(
         context: context,

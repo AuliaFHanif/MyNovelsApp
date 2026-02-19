@@ -61,7 +61,7 @@ class _FeedPanelState extends State<FeedPanel> {
                               ),
                             ),
                           ),
-                        ]
+                        ],
                       ],
                     ),
                   );
@@ -142,8 +142,10 @@ class _FeedPanelState extends State<FeedPanel> {
 
           // Open link
           if (await canLaunchUrl(Uri.parse(notification.postUrl))) {
-            await launchUrl(Uri.parse(notification.postUrl),
-                mode: LaunchMode.externalApplication);
+            await launchUrl(
+              Uri.parse(notification.postUrl),
+              mode: LaunchMode.externalApplication,
+            );
           }
         },
         child: Padding(
@@ -261,8 +263,7 @@ class _FeedPanelState extends State<FeedPanel> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () =>
-                      _showSubscribeDialog(context, feedViewModel),
+                  onPressed: () => _showSubscribeDialog(context, feedViewModel),
                   icon: const Icon(Icons.add),
                   label: const Text('Subscribe to Artist'),
                 ),
@@ -279,8 +280,7 @@ class _FeedPanelState extends State<FeedPanel> {
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton.icon(
-                  onPressed: () =>
-                      _showSubscribeDialog(context, feedViewModel),
+                  onPressed: () => _showSubscribeDialog(context, feedViewModel),
                   icon: const Icon(Icons.add),
                   label: const Text('Subscribe to Artist'),
                 ),
@@ -288,8 +288,12 @@ class _FeedPanelState extends State<FeedPanel> {
             }
 
             final source = feedViewModel.monitoredSources[index - 1];
-            final series = seriesViewModel.seriesList
-                .firstWhere((s) => s.id == source.seriesId, orElse: () => null);
+            final seriesList = seriesViewModel.seriesList
+                .where((s) => s.id == source.seriesId)
+                .toList();
+            final seriesTitle = seriesList.isEmpty
+                ? 'Unknown Series'
+                : seriesList.first.title;
 
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -300,17 +304,14 @@ class _FeedPanelState extends State<FeedPanel> {
                 ),
                 title: Text(source.artistName),
                 subtitle: Text(
-                  series?.title ?? 'Unknown Series',
+                  seriesTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.close, color: Colors.red),
-                  onPressed: () => _showUnsubscribeDialog(
-                    context,
-                    source,
-                    feedViewModel,
-                  ),
+                  onPressed: () =>
+                      _showUnsubscribeDialog(context, source, feedViewModel),
                   tooltip: 'Unsubscribe',
                 ),
               ),
@@ -322,117 +323,9 @@ class _FeedPanelState extends State<FeedPanel> {
   }
 
   void _showSubscribeDialog(BuildContext context, FeedViewModel feedViewModel) {
-    final _urlController = TextEditingController();
-    final _formKey = GlobalKey<FormState>();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Subscribe to Artist'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Consumer<SeriesViewModel>(
-                builder: (context, seriesViewModel, child) {
-                  if (seriesViewModel.seriesList.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        'No series found. Create a series first.',
-                        style: TextStyle(color: Colors.red[700]),
-                      ),
-                    );
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Select Series *',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: seriesViewModel.seriesList
-                          .map((s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text(s.title),
-                              ))
-                          .toList(),
-                      onChanged: (value) {},
-                      validator: (value) =>
-                          value == null ? 'Please select a series' : null,
-                    ),
-                  );
-                },
-              ),
-              TextFormField(
-                controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'DeviantArt Artist URL *',
-                  hintText:
-                      'https://www.deviantart.com/[username]',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a DeviantArt URL';
-                  }
-                  if (!value.contains('deviantart.com')) {
-                    return 'Invalid DeviantArt URL';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                // Get selected series
-                final seriesViewModel =
-                    context.read<SeriesViewModel>();
-                // TODO: Get selected series ID from form
-                final selectedSeriesId = seriesViewModel
-                    .seriesList.first.id; // Placeholder - implement dropdown value
-
-                final artistUrl = _urlController.text.trim();
-                final artistName = _extractArtistName(artistUrl);
-
-                final success = await feedViewModel.subscribeToArtist(
-                  selectedSeriesId,
-                  artistName,
-                  artistUrl,
-                );
-
-                if (success && context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Subscribed to $artistName'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(feedViewModel.errorMessage ?? 'Failed to subscribe'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Subscribe'),
-          ),
-        ],
-      ),
+      builder: (context) => _SubscribeDialog(feedViewModel: feedViewModel),
     );
   }
 
@@ -475,15 +368,6 @@ class _FeedPanelState extends State<FeedPanel> {
     );
   }
 
-  String _extractArtistName(String url) {
-    try {
-      final uri = Uri.parse(url);
-      return uri.pathSegments.first;
-    } catch (e) {
-      return 'Unknown Artist';
-    }
-  }
-
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
@@ -498,6 +382,163 @@ class _FeedPanelState extends State<FeedPanel> {
       return '${difference.inDays}d ago';
     } else {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+    }
+  }
+}
+
+class _SubscribeDialog extends StatefulWidget {
+  final FeedViewModel feedViewModel;
+
+  const _SubscribeDialog({required this.feedViewModel});
+
+  @override
+  State<_SubscribeDialog> createState() => _SubscribeDialogState();
+}
+
+class _SubscribeDialogState extends State<_SubscribeDialog> {
+  late final TextEditingController _urlController;
+  final _formKey = GlobalKey<FormState>();
+  String? _selectedSeriesId;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController();
+    _selectedSeriesId = null;
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Subscribe to Artist'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Consumer<SeriesViewModel>(
+              builder: (context, seriesViewModel, child) {
+                if (seriesViewModel.seriesList.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'No series found. Create a series first.',
+                      style: TextStyle(color: Colors.red[700]),
+                    ),
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedSeriesId,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Series *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: seriesViewModel.seriesList
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(s.title),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedSeriesId = value);
+                    },
+                    validator: (value) =>
+                        value == null ? 'Please select a series' : null,
+                  ),
+                );
+              },
+            ),
+            TextFormField(
+              controller: _urlController,
+              decoration: const InputDecoration(
+                labelText: 'DeviantArt Artist URL *',
+                hintText: 'https://www.deviantart.com/[username]',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a DeviantArt URL';
+                }
+                if (!value.contains('deviantart.com')) {
+                  return 'Invalid DeviantArt URL';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            if (_formKey.currentState!.validate()) {
+              if (_selectedSeriesId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please select a series'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              final artistUrl = _urlController.text.trim();
+              final artistName = _extractArtistName(artistUrl);
+
+              final success = await widget.feedViewModel.subscribeToArtist(
+                _selectedSeriesId!,
+                artistName,
+                artistUrl,
+              );
+
+              if (success && context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Subscribed to $artistName'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      widget.feedViewModel.errorMessage ??
+                          'Failed to subscribe',
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+          child: const Text('Subscribe'),
+        ),
+      ],
+    );
+  }
+
+  String _extractArtistName(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.pathSegments.first;
+    } catch (e) {
+      return 'Unknown Artist';
     }
   }
 }
