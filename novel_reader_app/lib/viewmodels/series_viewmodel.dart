@@ -50,15 +50,62 @@ class SeriesViewModel extends ChangeNotifier {
     }
   }
 
-  // Delete series
+  // Update existing series
+  Future<bool> updateSeries(Series series) async {
+    try {
+      await _pb.pb
+          .collection('series')
+          .update(series.id, body: series.toJson());
+      await fetchSeries(); // Refresh the list
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to update series: $e';
+      print(_errorMessage);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Delete series (with cascade delete for chapters and translations)
   Future<bool> deleteSeries(String id) async {
     try {
+      // First, get all chapters for this series
+      final chapters = await _pb.pb
+          .collection('chapters')
+          .getFullList(filter: 'series_id = "$id"');
+
+      // For each chapter, delete its translations first, then the chapter
+      for (final chapter in chapters) {
+        final chapterId = chapter.id;
+
+        // Delete translations for this chapter
+        try {
+          final translations = await _pb.pb
+              .collection('translations')
+              .getFullList(filter: 'chapter_id = "$chapterId"');
+
+          for (final translation in translations) {
+            await _pb.pb.collection('translations').delete(translation.id);
+          }
+        } catch (e) {
+          // Continue even if translations fail
+        }
+
+        // Delete the chapter
+        try {
+          await _pb.pb.collection('chapters').delete(chapterId);
+        } catch (e) {
+          throw Exception('Failed to delete chapter: $e');
+        }
+      }
+
+      // Finally, delete the series
       await _pb.pb.collection('series').delete(id);
+
       await fetchSeries(); // Refresh the list
       return true;
     } catch (e) {
       _errorMessage = 'Failed to delete series: $e';
-      print(_errorMessage);
       notifyListeners();
       return false;
     }

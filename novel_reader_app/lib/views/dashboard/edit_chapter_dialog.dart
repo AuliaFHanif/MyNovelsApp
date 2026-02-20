@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 import '../../models/chapter.dart';
 import '../../viewmodels/chapter_viewmodel.dart';
+import '../../services/pocketbase_service.dart';
 import 'package:provider/provider.dart';
+import 'widgets/image_upload_section.dart';
 
 class EditChapterDialog extends StatefulWidget {
   final Chapter chapter;
@@ -17,6 +21,8 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
   late final TextEditingController _chapterNumberController;
   late final TextEditingController _titleController;
   late final TextEditingController _sourceTextController;
+  final List<File> _selectedImages = [];
+  late String _selectedStatus;
 
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
@@ -35,9 +41,21 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
     _sourceTextController = TextEditingController(
       text: widget.chapter.sourceText,
     );
+    _selectedStatus = widget.chapter.status;
     _characterCount = widget.chapter.sourceText.length;
 
     _sourceTextController.addListener(_updateCharacterCount);
+
+    // Debug existing images
+    print('DEBUG - Chapter ID: ${widget.chapter.id}');
+    print('DEBUG - Chapter images field: ${widget.chapter.images}');
+    print('DEBUG - Images is null? ${widget.chapter.images == null}');
+    print('DEBUG - Images isEmpty? ${widget.chapter.images?.isEmpty}');
+    if (widget.chapter.images != null) {
+      for (var i = 0; i < widget.chapter.images!.length; i++) {
+        print('DEBUG - Image $i: "${widget.chapter.images![i]}"');
+      }
+    }
   }
 
   void _updateCharacterCount() {
@@ -134,6 +152,26 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
               ),
               const SizedBox(height: 16),
 
+              // Chapter Status
+              DropdownButtonFormField<String>(
+                initialValue: _selectedStatus,
+                decoration: const InputDecoration(
+                  labelText: 'Chapter Status',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.flag),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'ongoing', child: Text('Ongoing')),
+                  DropdownMenuItem(value: 'finished', child: Text('Finished')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedStatus = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+
               // Character Count & Status
               Row(
                 children: [
@@ -200,27 +238,45 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
               ),
               const SizedBox(height: 8),
 
-              // Source Text Field
+              // Source Text Field and Image Section
               Expanded(
-                child: TextFormField(
-                  controller: _sourceTextController,
-                  decoration: const InputDecoration(
-                    hintText: 'Paste chapter content here...',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _sourceTextController,
+                        decoration: const InputDecoration(
+                          hintText: 'Paste chapter content here...',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                        ),
+                        maxLines: 12,
+                        textAlignVertical: TextAlignVertical.top,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Source text is required';
+                          }
+                          if (value.length < 10) {
+                            return 'Text too short (min 10 chars)';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ImageUploadSection(
+                        selectedImages: _selectedImages,
+                        onImagesChanged: (images) {
+                          setState(() {
+                            _selectedImages.clear();
+                            _selectedImages.addAll(images);
+                          });
+                        },
+                        existingImageUrls: _getExistingImageUrls(),
+                        textController: _sourceTextController,
+                      ),
+                    ],
                   ),
-                  maxLines: null,
-                  expands: true,
-                  textAlignVertical: TextAlignVertical.top,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Source text is required';
-                    }
-                    if (value.length < 10) {
-                      return 'Text too short (min 10 chars)';
-                    }
-                    return null;
-                  },
                 ),
               ),
               const SizedBox(height: 24),
@@ -304,55 +360,102 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
 
     setState(() => _isSaving = true);
 
-    // Determine new translation status
-    String newStatus = widget.chapter.translationStatus;
-    if (widget.chapter.sourceText != _sourceTextController.text) {
-      // Text changed - reset to pending
-      newStatus = 'pending';
-    }
+    try {
+      // Determine new translation status
+      String newStatus = widget.chapter.translationStatus;
+      if (widget.chapter.sourceText != _sourceTextController.text) {
+        // Text changed - reset to pending
+        newStatus = 'pending';
+      }
 
-    // Create updated chapter with same id and created time
-    final updatedChapter = Chapter(
-      id: widget.chapter.id,
-      seriesId: widget.chapter.seriesId,
-      chapterNumber: int.parse(_chapterNumberController.text),
-      chapterTitle: _titleController.text.isEmpty
-          ? null
-          : _titleController.text,
-      sourceText: _sourceTextController.text,
-      translationStatus: newStatus,
-      wordCount:
-          _characterCount, // Update word count to current character count
-      created: widget.chapter.created, // Keep original creation time
-      updated: DateTime.now(), // Set new update time
-    );
+      // Create updated chapter with same id and created time
+      final updatedChapter = Chapter(
+        id: widget.chapter.id,
+        seriesId: widget.chapter.seriesId,
+        chapterNumber: int.parse(_chapterNumberController.text),
+        chapterTitle: _titleController.text.isEmpty
+            ? null
+            : _titleController.text,
+        sourceText: _sourceTextController.text,
+        translationStatus: newStatus,
+        status: _selectedStatus,
+        wordCount:
+            _characterCount, // Update word count to current character count
+        created: widget.chapter.created, // Keep original creation time
+        updated: DateTime.now(), // Set new update time
+      );
 
-    final viewModel = context.read<ChapterViewModel>();
-    final success = await viewModel.updateChapter(updatedChapter);
+      final viewModel = context.read<ChapterViewModel>();
+      final success = await viewModel.updateChapter(updatedChapter);
 
-    if (success && mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Chapter updated successfully'),
-          backgroundColor: Colors.green[700],
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Dismiss',
-            textColor: Colors.white,
-            onPressed: () {},
+      if (!success) {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                viewModel.errorMessage ?? 'Failed to update chapter',
+              ),
+              backgroundColor: Colors.red[700],
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Upload new images if any were selected
+      if (_selectedImages.isNotEmpty) {
+        print('Uploading ${_selectedImages.length} new images...');
+
+        final pb = PocketBaseService().pb;
+        final files = _selectedImages.map((file) {
+          return http.MultipartFile.fromBytes(
+            'images',
+            file.readAsBytesSync(),
+            filename: file.path.split(Platform.pathSeparator).last,
+          );
+        }).toList();
+
+        await pb.collection('chapters').update(widget.chapter.id, files: files);
+
+        print('Images uploaded successfully');
+
+        // Refresh chapters to get updated image list
+        await viewModel.fetchChapters(widget.chapter.seriesId);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _selectedImages.isEmpty
+                  ? 'Chapter updated successfully'
+                  : 'Chapter and ${_selectedImages.length} image(s) updated!',
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Dismiss',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
           ),
-        ),
-      );
-    } else if (mounted) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(viewModel.errorMessage ?? 'Failed to update chapter'),
-          backgroundColor: Colors.red[700],
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      }
+    } catch (e) {
+      print('Error saving chapter: $e');
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -380,5 +483,15 @@ class _EditChapterDialogState extends State<EditChapterDialog> {
       default:
         return Icons.pending;
     }
+  }
+
+  List<String>? _getExistingImageUrls() {
+    if (widget.chapter.images == null || widget.chapter.images!.isEmpty) {
+      return null;
+    }
+
+    return widget.chapter.images!.map((filename) {
+      return 'http://127.0.0.1:8090/api/files/chapters/${widget.chapter.id}/$filename';
+    }).toList();
   }
 }

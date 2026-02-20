@@ -16,15 +16,17 @@ This project creates a complete ecosystem for managing, translating, and reading
 
 ### Content Management
 
-- Manual novel series curation with cover artwork
+- Manual novel series curation with cover artwork (PocketBase file storage)
 - Chapter organization with progress tracking
-- Support for Chinese and Japanese source materials
+- Support for Chinese, Japanese, Korean, and English source materials
 - Real-time translation status monitoring
+- Series and chapter status (ongoing/finished)
+- Search across series metadata and chapter content
 
 ### Translation Engine
 
 - Local LLM integration via LM Studio (no API costs or privacy concerns)
-- Intelligent text chunking with context preservation
+- Intelligent text chunking with context preservation and overlap merging
 - Support for multiple models (Gemma-2, Mistral-Nemo)
 - Background translation on desktop and mobile
 - Translation history and quality ratings
@@ -75,10 +77,10 @@ This project creates a complete ecosystem for managing, translating, and reading
 
 **Communication Flow:**
 
-1. Flutter app connects to PocketBase via Tailscale IP
+1. Flutter app connects to PocketBase via local IP or Tailscale IP
 2. User adds chapters with source text
 3. Translation triggered → Flutter calls LM Studio API via Tailscale
-4. LM Studio processes in chunks with 10-20% overlap
+4. LM Studio processes in chunks with overlap merging
 5. Translated text stored in PocketBase
 6. Mobile devices download and cache locally (Drift database)
 
@@ -195,11 +197,12 @@ lib/
 ### Series Collection
 
 - `title` (Text, Required): Novel series title
+- `translated_title` (Text, Optional): Translated display title
 - `author` (Text, Optional): Original author
 - `cover_image` (File, Optional): Cover art (jpg/png, max 2MB)
-- `source_language` (Select): Chinese or Japanese
+- `source_language` (Select): Chinese, Japanese, Korean, English
 - `description` (Text, Optional): Series synopsis
-- `status` (Select): Active, Completed, or Paused
+- `status` (Select): Ongoing or Finished
 - `created`, `updated` (Auto): Timestamps
 
 ### Chapters Collection
@@ -210,6 +213,7 @@ lib/
 - `source_text` (Text, Required): Raw source content
 - `word_count` (Number, Auto): Character count
 - `translation_status` (Select): Pending, Processing, Completed, or Failed
+- `status` (Select): Ongoing or Finished
 - `created`, `updated` (Auto): Timestamps
 
 ### Translations Collection
@@ -231,7 +235,7 @@ lib/
 ### Text Chunking Strategy
 
 - Split source text into 1024-2048 token segments
-- 10-20% overlap between chunks to preserve context
+- 10% overlap between chunks to preserve context
 - Split on sentence boundaries (full-width CJK punctuation)
 - Post-process to remove duplicate sentences in overlaps
 
@@ -307,7 +311,7 @@ Provide only the translation without commentary.
 
 ## 📖 Usage Workflow
 
-1. **Add Series**: Dashboard → "New Series" → Enter title, author, language, upload cover
+1. **Add Series**: Dashboard → "Add Novel" → Enter title, translated title, author, language, status, upload cover
 2. **Add Chapters**: Select series → "Add Chapter" → Paste source text → Save
 3. **Translate**: Click "Translate" on chapter → LM Studio processes → View progress
 4. **Read**: Select translated chapter → Customize theme/font → Read with navigation
@@ -367,8 +371,8 @@ Provide only the translation without commentary.
 
 ## 📄 Document Versions
 
-- **v1.0**: Initial implementation plan and architecture (Feb 2026)
+-- **v1.1**: Updated to reflect current implementation (Feb 2026)
 
 ---
 
-**Project Status:** Planning Phase (Development Environment Setup in progress)
+**Project Status:** Active Development (core dashboard, translation, and data models implemented)

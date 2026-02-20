@@ -4,6 +4,8 @@ import 'services/pocketbase_service.dart';
 import 'viewmodels/series_viewmodel.dart';
 import 'viewmodels/chapter_viewmodel.dart';
 import 'views/dashboard/dashboard_home.dart';
+import 'viewmodels/translation_viewmodel.dart';
+import 'viewmodels/feed_viewmodel.dart';
 
 void main() {
   PocketBaseService().initialize();
@@ -19,6 +21,8 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SeriesViewModel()),
         ChangeNotifierProvider(create: (_) => ChapterViewModel()),
+        ChangeNotifierProvider(create: (_) => TranslationViewModel()),
+        ChangeNotifierProvider(create: (_) => FeedViewModel()),  
       ],
       child: MaterialApp(
         title: 'Novel Reader',

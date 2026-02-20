@@ -12,6 +12,7 @@ class ChapterViewModel extends ChangeNotifier {
   List<Chapter> get chaptersList => _chaptersList;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  PocketBaseService get pb => _pb;
 
   // Fetch chapters for a specific series
   Future<void> fetchChapters(String seriesId) async {
@@ -64,6 +65,19 @@ class ChapterViewModel extends ChangeNotifier {
       print(_errorMessage);
       notifyListeners();
       return false;
+    }
+  }
+
+  // Get a single chapter by ID
+  Future<Chapter?> getChapter(String chapterId) async {
+    try {
+      final record = await _pb.pb.collection('chapters').getOne(chapterId);
+      return Chapter.fromJson(record.toJson());
+    } catch (e) {
+      _errorMessage = 'Failed to get chapter: $e';
+      print(_errorMessage);
+      notifyListeners();
+      return null;
     }
   }
 
