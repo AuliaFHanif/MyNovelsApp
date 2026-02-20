@@ -12,9 +12,15 @@ class PocketBaseService {
     // For local development on Windows
     pb = PocketBase('http://127.0.0.1:8090');
 
+    
+
     // For mobile (Phase 6), use Tailscale IP:
     // pb = PocketBase('http://100.94.48.126:8090');
   }
+
+  void initializeWithUrl(String url) {
+  pb = PocketBase(url);
+}
 
   // Test connection
   Future<bool> testConnection() async {

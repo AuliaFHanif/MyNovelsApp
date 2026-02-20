@@ -9,6 +9,7 @@ import 'reader_browse_screen.dart';
 import 'reader_series_screen.dart';
 import 'reader_followed_screen.dart';
 import 'reader_login_screen.dart';
+import 'reader_settings_screen.dart';
 
 class ReaderHomeScreen extends StatefulWidget {
   const ReaderHomeScreen({super.key});
@@ -188,9 +189,7 @@ class _Sidebar extends StatelessWidget {
               if (!auth.isLoggedIn) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const ReaderLoginScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ReaderLoginScreen()),
                 );
               } else {
                 onSelect(2);
@@ -200,7 +199,45 @@ class _Sidebar extends StatelessWidget {
 
           const Spacer(),
           const Divider(height: 1, color: Color(0xFFF0EEE9)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+
+          // Settings button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              leading: const Icon(
+                Icons.settings_outlined,
+                size: 20,
+                color: Color(0xFF9E9E9E),
+              ),
+              title: Text(
+                'Settings',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF6B6B6B),
+                ),
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ReaderSettingsScreen(),
+                  ),
+                );
+              },
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 2,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
 
           // User section
           if (auth.isLoggedIn)
@@ -399,12 +436,15 @@ class _HomeTab extends StatelessWidget {
             _buildContinueReading(context, auth),
 
             // Recently added
-            _SectionHeader(title: 'Recently Added', onSeeAll: () {
-              // Navigate to browse
-            }),
+            _SectionHeader(
+              title: 'Recently Added',
+              onSeeAll: () {
+                // Navigate to browse
+              },
+            ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 240,
+                height: 290,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -491,8 +531,8 @@ class _HomeTab extends StatelessWidget {
     final timeGreeting = hour < 12
         ? 'Good morning'
         : hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
+        ? 'Good afternoon'
+        : 'Good evening';
     return name != null ? '$timeGreeting, $name' : timeGreeting;
   }
 }
@@ -555,30 +595,49 @@ class _SeriesCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ReaderSeriesScreen(series: series),
-        ),
+        MaterialPageRoute(builder: (_) => ReaderSeriesScreen(series: series)),
       ),
       child: SizedBox(
-        width: 148,
+        width: 140,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Cover
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: AspectRatio(
-                aspectRatio: 2 / 3,
-                child: series.coverImage != null
-                    ? Image.network(
-                        'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _PlaceholderCover(
-                          title: series.title,
-                        ),
-                      )
-                    : _PlaceholderCover(title: series.title),
-              ),
+            // Cover — fixed height, no AspectRatio fighting the parent
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 140,
+                    height: 210,
+                    child: series.coverImage != null
+                        ? Image.network(
+                            'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _PlaceholderCover(title: series.title),
+                          )
+                        : _PlaceholderCover(title: series.title),
+                  ),
+                ),
+                // Status dot
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: series.status == 'ongoing'
+                          ? const Color(0xFF22C55E)
+                          : const Color(0xFF9E9E9E),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Text(
@@ -587,6 +646,7 @@ class _SeriesCard extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1A1A1A),
+                height: 1.3,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -595,7 +655,7 @@ class _SeriesCard extends StatelessWidget {
             Text(
               series.author,
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: 11,
                 color: const Color(0xFF9E9E9E),
               ),
               maxLines: 1,
@@ -671,14 +731,14 @@ class _ChapterUpdateRow extends StatelessWidget {
       onTap: series == null
           ? null
           : () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ReaderSeriesScreen(
-                    series: series,
-                    autoOpenChapter: chapter,
-                  ),
+              context,
+              MaterialPageRoute(
+                builder: (_) => ReaderSeriesScreen(
+                  series: series,
+                  autoOpenChapter: chapter,
                 ),
               ),
+            ),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -706,7 +766,9 @@ class _ChapterUpdateRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    series?.translatedTitle ?? series?.title ?? 'Unknown Series',
+                    series?.translatedTitle ??
+                        series?.title ??
+                        'Unknown Series',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -717,8 +779,7 @@ class _ChapterUpdateRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    chapter.chapterTitle ??
-                        'Chapter ${chapter.chapterNumber}',
+                    chapter.chapterTitle ?? 'Chapter ${chapter.chapterNumber}',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: const Color(0xFF6B6B6B),
@@ -771,9 +832,7 @@ class _ContinueReadingCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ReaderSeriesScreen(series: series),
-        ),
+        MaterialPageRoute(builder: (_) => ReaderSeriesScreen(series: series)),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -831,8 +890,7 @@ class _ContinueReadingCard extends StatelessWidget {
               ),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1A1A),
                 borderRadius: BorderRadius.circular(8),
