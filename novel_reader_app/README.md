@@ -16,4 +16,5 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
-Command to run dev: flutter run -d windows
+Command to run dashboard: flutter run -d windows
+Command to run reader view: flutter run -t lib/main_reader.dart
