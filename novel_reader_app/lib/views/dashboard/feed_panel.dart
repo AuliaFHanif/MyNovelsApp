@@ -437,7 +437,7 @@ class _SubscribeDialogState extends State<_SubscribeDialog> {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: DropdownButtonFormField<String>(
-                    value: _selectedSeriesId,
+                    initialValue: _selectedSeriesId,
                     decoration: const InputDecoration(
                       labelText: 'Select Series *',
                       border: OutlineInputBorder(),

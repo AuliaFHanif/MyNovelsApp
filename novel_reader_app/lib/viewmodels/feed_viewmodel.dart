@@ -31,7 +31,12 @@ class FeedViewModel extends ChangeNotifier {
           .getFullList(sort: '-created');
 
       _notifications = records
-          .map((record) => FeedNotification.fromJson(record.toJson()))
+          .cast<dynamic>()
+          .map(
+            (record) => FeedNotification.fromJson(
+              record.toJson() as Map<String, dynamic>,
+            ),
+          )
           .toList();
     } catch (e) {
       _errorMessage = 'Failed to load notifications: $e';
@@ -54,7 +59,12 @@ class FeedViewModel extends ChangeNotifier {
           .getFullList(sort: '-created');
 
       _monitoredSources = records
-          .map((record) => MonitoredSource.fromJson(record.toJson()))
+          .cast<dynamic>()
+          .map(
+            (record) => MonitoredSource.fromJson(
+              record.toJson() as Map<String, dynamic>,
+            ),
+          )
           .toList();
     } catch (e) {
       _errorMessage = 'Failed to load monitored sources: $e';
@@ -86,14 +96,18 @@ class FeedViewModel extends ChangeNotifier {
       // Derive RSS URL from source URL
       final rssUrl = _deriveRssUrl(sourceUrl);
 
-      await _pb.pb.collection('monitored_sources').create(body: {
-        'series_id': seriesId,
-        'artist_name': artistName,
-        'source_url': sourceUrl,
-        'source_type': 'deviantart',
-        'rss_url': rssUrl,
-        'is_active': true,
-      });
+      await _pb.pb
+          .collection('monitored_sources')
+          .create(
+            body: {
+              'series_id': seriesId,
+              'artist_name': artistName,
+              'source_url': sourceUrl,
+              'source_type': 'deviantart',
+              'rss_url': rssUrl,
+              'is_active': true,
+            },
+          );
 
       await fetchMonitoredSources(); // Refresh the list
       return true;
@@ -114,14 +128,10 @@ class FeedViewModel extends ChangeNotifier {
       try {
         final notificationsToDelete = await _pb.pb
             .collection('feed_notifications')
-            .getFullList(
-              filter: 'monitored_source_id = "$monitoredSourceId"',
-            );
+            .getFullList(filter: 'monitored_source_id = "$monitoredSourceId"');
 
         for (final notification in notificationsToDelete) {
-          await _pb.pb
-              .collection('feed_notifications')
-              .delete(notification.id);
+          await _pb.pb.collection('feed_notifications').delete(notification.id);
         }
       } catch (e) {
         print('Error deleting notifications: $e');
@@ -142,10 +152,9 @@ class FeedViewModel extends ChangeNotifier {
   /// Mark notification as read
   Future<bool> markAsRead(String notificationId) async {
     try {
-      await _pb.pb.collection('feed_notifications').update(
-            notificationId,
-            body: {'is_read': true},
-          );
+      await _pb.pb
+          .collection('feed_notifications')
+          .update(notificationId, body: {'is_read': true});
 
       // Update local state
       final index = _notifications.indexWhere((n) => n.id == notificationId);
@@ -216,12 +225,9 @@ class FeedViewModel extends ChangeNotifier {
 
   /// Set up real-time subscription to feed notifications
   void subscribeToFeedUpdates(Function(FeedNotification) onNewNotification) {
-    _pb.pb
-        .collection('feed_notifications')
-        .subscribe('*', (e) {
-      if (e.action == 'create') {
-        final notification =
-            FeedNotification.fromJson(e.record.toJson());
+    _pb.pb.collection('feed_notifications').subscribe('*', (e) {
+      if (e.action == 'create' && e.record != null) {
+        final notification = FeedNotification.fromJson(e.record!.toJson());
         _notifications.insert(0, notification);
         notifyListeners();
         onNewNotification(notification);

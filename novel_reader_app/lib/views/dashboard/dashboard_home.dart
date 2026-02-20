@@ -4,6 +4,7 @@ import '../../viewmodels/series_viewmodel.dart';
 import '../../models/series.dart';
 import 'add_series_dialog.dart';
 import 'series_detail_screen.dart';
+import 'feed_notifications_widget.dart';
 
 class DashboardHome extends StatefulWidget {
   const DashboardHome({super.key});
@@ -100,6 +101,7 @@ class _DashboardHomeState extends State<DashboardHome> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                FeedNotificationsWidget(),
                 const Spacer(),
                 // User Profile
                 Container(
