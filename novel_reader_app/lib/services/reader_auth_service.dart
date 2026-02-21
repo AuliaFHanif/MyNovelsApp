@@ -25,7 +25,7 @@ class ReaderAuthService extends ChangeNotifier {
 
   // ─── Continue reading (stored locally) ───
   // Map of seriesId -> {chapterId, chapterNumber, progress}
-  Map<String, Map<String, dynamic>> _readingProgress = {};
+  final Map<String, Map<String, dynamic>> _readingProgress = {};
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();

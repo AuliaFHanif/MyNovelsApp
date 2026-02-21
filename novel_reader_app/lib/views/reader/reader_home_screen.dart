@@ -449,7 +449,7 @@ class _HomeTab extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   itemCount: recentSeries.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  separatorBuilder: (_, _) => const SizedBox(width: 16),
                   itemBuilder: (_, i) => _SeriesCard(series: recentSeries[i]),
                 ),
               ),
@@ -615,7 +615,7 @@ class _SeriesCard extends StatelessWidget {
                         ? Image.network(
                             'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _PlaceholderCover(title: series.title),
                           )
                         : _PlaceholderCover(title: series.title),
@@ -754,7 +754,7 @@ class _ChapterUpdateRow extends StatelessWidget {
                     ? Image.network(
                         'http://127.0.0.1:8090/api/files/series/${series!.id}/${series.coverImage!}',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        errorBuilder: (_, _, _) =>
                             _PlaceholderCover(title: series.title),
                       )
                     : _PlaceholderCover(title: series?.title ?? '?'),
@@ -853,7 +853,7 @@ class _ContinueReadingCard extends StatelessWidget {
                     ? Image.network(
                         'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        errorBuilder: (_, _, _) =>
                             _PlaceholderCover(title: series.title),
                       )
                     : _PlaceholderCover(title: series.title),

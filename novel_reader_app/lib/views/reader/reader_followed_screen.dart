@@ -179,7 +179,7 @@ class _FollowedSeriesCard extends StatelessWidget {
                       ? Image.network(
                           'http://127.0.0.1:8090/api/files/series/${series.id}/${series.coverImage!}',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (_, _, _) =>
                               _PlaceholderCover(title: series.title),
                         )
                       : _PlaceholderCover(title: series.title),

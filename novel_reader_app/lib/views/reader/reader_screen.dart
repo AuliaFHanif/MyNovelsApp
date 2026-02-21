@@ -189,6 +189,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   );
 
   List<_PageContent> _buildPages() {
+    if (_pagedAvailH <= 0 || _pagedAvailW <= 0) return [];
+
     final lines = _displayText
         .split('\n')
         .map((l) => l.trim())
@@ -200,41 +202,48 @@ class _ReaderScreenState extends State<ReaderScreen>
     double currentH = 0;
     int pageIndex = 0;
 
-    // ── Budget calculation ──────────────────────────────────────────
-    // Available height for the Expanded text area on each page:
-    //
-    //   _pagedAvailH              full viewport height (LayoutBuilder)
-    //   - _headerH      (72)      56px bar + 16px block-bar, via Container top padding
-    //   - padH          (44)      fromLTRB(32, 20, 32, 24): top 20 + bottom 24
-    //   - navH          (40)      Padding(top:12) + _PageArrow(vertical:6+6, icon:16)
-    //   - safetyMargin  (20)      rounding errors + font metric differences
-    //
-    // Page 0 additionally loses the chapter title block rendered above the text.
-    // Title block: label(~13) + gap(10) + title text(~56 for 2 lines) +
-    //              gap(24) + Divider + gap(20) ≈ 155px.
     const navH = 40.0;
     const padH = 44.0;
-    const safetyMargin = 20.0;
-    const titleH = 155.0;
+    const safetyMargin = 2.0;
+
     final fullBudget = (_pagedAvailH - _headerH - navH - padH - safetyMargin)
-        .clamp(80.0, double.infinity);
+        .clamp(100.0, double.infinity);
+
+    // Measure title height dynamically instead of using a hardcoded constant.
+    double measureTitle() {
+      final titleText =
+          _currentChapter.chapterTitle ??
+          'Chapter ${_currentChapter.chapterNumber}';
+      final tp = TextPainter(
+        text: TextSpan(
+          text: titleText,
+          style: GoogleFonts.playfairDisplay(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            height: 1.2,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      tp.layout(maxWidth: _pagedAvailW);
+      // label (11) + gap (10) + title + gap (24) + divider (1) + gap (20)
+      return 11 + 10 + tp.height + 24 + 1 + 20;
+    }
+
+    final calculatedTitleH = measureTitle();
 
     double budgetFor(int pi) => pi == 0
-        ? (fullBudget - titleH).clamp(60.0, double.infinity)
+        ? (fullBudget - calculatedTitleH).clamp(60.0, double.infinity)
         : fullBudget;
 
     // Bottom padding per paragraph — must match the widget exactly.
     final paraBottomPad = _fontSize * _lineHeight * 0.5;
 
     double measurePara(String text) {
-      if (_pagedAvailW <= 0) {
-        // No layout info yet — rough fallback.
-        return _fontSize * _lineHeight * 3 + paraBottomPad;
-      }
       final tp = TextPainter(
         text: TextSpan(
           text: text,
-          style: TextStyle(
+          style: GoogleFonts.lora(
             fontSize: _fontSize,
             height: _lineHeight,
             letterSpacing: 0.01,
@@ -243,9 +252,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         textDirection: TextDirection.ltr,
       );
       tp.layout(maxWidth: _pagedAvailW);
-      // Apply a 1.07 multiplier: TextPainter uses the system default font while
-      // the widget renders in Lora, which has slightly taller metrics.
-      return tp.height * 1.07 + paraBottomPad;
+      return tp.height + paraBottomPad;
     }
 
     void flush() {
@@ -266,14 +273,11 @@ class _ReaderScreenState extends State<ReaderScreen>
         pageIndex++;
       } else {
         final h = measurePara(line);
-        if (buf.isNotEmpty && currentH + h > budgetFor(pageIndex)) {
-          // Current page is full — start a new one.
+        if (buf.isNotEmpty && (currentH + h) > budgetFor(pageIndex)) {
           flush();
         }
         buf.add(line);
         currentH += h;
-        // If a single paragraph exceeds the entire budget on its own, flush it
-        // immediately so it gets its own page and doesn't block the next one.
         if (buf.length == 1 && currentH > budgetFor(pageIndex)) {
           flush();
         }
@@ -290,7 +294,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     super.initState();
     _currentChapter = widget.chapter;
     _currentTranslation = widget.translation;
-    _pages = _buildPages();
 
     _pageCtrl = PageController();
 
@@ -302,6 +305,37 @@ class _ReaderScreenState extends State<ReaderScreen>
     _fadeCtrl.forward();
 
     _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updatePageDimensions();
+  }
+
+  void _updatePageDimensions() {
+    final media = MediaQuery.of(context);
+    final newH = media.size.height;
+    final newW = (media.size.width.clamp(0.0, _maxWidth)) - 64;
+
+    if ((newH - _pagedAvailH).abs() > 1 || (newW - _pagedAvailW).abs() > 1) {
+      setState(() {
+        _pagedAvailH = newH;
+        _pagedAvailW = newW;
+        if (_mode == ReadingMode.paged) {
+          _pages = _buildPages();
+          // Keep current page in bounds after rebuilding
+          if (_currentPageIndex >= _pages.length) {
+            _currentPageIndex = (_pages.length - 1).clamp(0, _pages.length);
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_pageCtrl.hasClients) {
+              _pageCtrl.jumpToPage(_currentPageIndex);
+            }
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -758,37 +792,14 @@ class _ReaderScreenState extends State<ReaderScreen>
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final newH = constraints.maxHeight;
-        // Text column width = constrained by _maxWidth, minus 64px horizontal padding.
-        final newW = (constraints.maxWidth.clamp(0.0, _maxWidth)) - 64;
-
-        if ((newH - _pagedAvailH).abs() > 1 ||
-            (newW - _pagedAvailW).abs() > 1) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                _pagedAvailH = newH;
-                _pagedAvailW = newW;
-                _pages = _buildPages();
-                _currentPageIndex = 0;
-                if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
-              });
-            }
-          });
-        }
-
-        return FadeTransition(
-          opacity: _fadeAnim,
-          child: PageView.builder(
-            controller: _pageCtrl,
-            itemCount: _pages.length,
-            onPageChanged: (i) => setState(() => _currentPageIndex = i),
-            itemBuilder: (ctx, i) => _buildPage(_pages[i], i),
-          ),
-        );
-      },
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: PageView.builder(
+        controller: _pageCtrl,
+        itemCount: _pages.length,
+        onPageChanged: (i) => setState(() => _currentPageIndex = i),
+        itemBuilder: (ctx, i) => _buildPage(_pages[i], i),
+      ),
     );
   }
 
@@ -872,31 +883,29 @@ class _ReaderScreenState extends State<ReaderScreen>
                       const SizedBox(height: 20),
                     ],
 
-                    // Text content — fills available space, no scrolling
+                    // Text content
                     Expanded(
-                      child: ClipRect(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: tp.paragraphs
-                              .map(
-                                (p) => Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: _fontSize * _lineHeight * 0.5,
-                                  ),
-                                  child: Text(
-                                    p,
-                                    style: GoogleFonts.lora(
-                                      fontSize: _fontSize,
-                                      height: _lineHeight,
-                                      color: _colors.text,
-                                      letterSpacing: 0.01,
-                                    ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: tp.paragraphs
+                            .map(
+                              (p) => Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: _fontSize * _lineHeight * 0.5,
+                                ),
+                                child: Text(
+                                  p,
+                                  style: GoogleFonts.lora(
+                                    fontSize: _fontSize,
+                                    height: _lineHeight,
+                                    color: _colors.text,
+                                    letterSpacing: 0.01,
                                   ),
                                 ),
-                              )
-                              .toList(),
-                        ),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
 
@@ -1113,6 +1122,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                   }),
                   onWidthChanged: (w) => setState(() {
                     _maxWidth = w;
+                    final media = MediaQuery.of(context);
+                    _pagedAvailW =
+                        (media.size.width.clamp(0.0, _maxWidth)) - 64;
                     if (_mode == ReadingMode.paged) _pages = _buildPages();
                   }),
                   onClose: () => setState(() => _settingsOpen = false),
@@ -1215,7 +1227,7 @@ class _ImagePageWidget extends StatelessWidget {
                                       ),
                                     );
                                   },
-                                  errorBuilder: (_, __, ___) => _ImgPlaceholder(
+                                  errorBuilder: (_, _, _) => _ImgPlaceholder(
                                     marker: page.marker,
                                     colors: colors,
                                   ),
